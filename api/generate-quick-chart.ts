@@ -501,8 +501,23 @@ function generateQuickChartPDF(
       doc.moveDown(0.08)
     }
 
+    // CTA
+    doc.moveDown(0.35)
+    doc.moveTo(36, doc.y).lineTo(576, doc.y).strokeColor(GOLD).lineWidth(0.5).opacity(0.4).stroke()
+    doc.opacity(1)
+    doc.moveDown(0.25)
+    doc.fontSize(7.5).font('Helvetica-Bold').fillColor(GOLD)
+      .text('Want the full picture?', 36, doc.y, { width: pw, align: 'center' })
+    doc.moveDown(0.1)
+    doc.fontSize(7).font('Helvetica').fillColor(MID)
+      .text(
+        'This Quick Chart is a snapshot of your natal architecture. For a full 20+ page personalised interpretation ' +
+        'covering your Seven Pillars, shadow work, compensatory mechanisms, and soul signature, visit tarotpathwork.com',
+        36, doc.y, { width: pw, align: 'center', lineGap: 1.5 }
+      )
+
     // Footer line
-    doc.moveDown(0.2)
+    doc.moveDown(0.25)
     doc.moveTo(36, doc.y).lineTo(576, doc.y).strokeColor(GOLD).lineWidth(0.3).opacity(0.3).stroke()
     doc.opacity(1)
     doc.moveDown(0.1)
@@ -591,5 +606,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err: any) {
     console.error('Quick chart generation error:', err)
     return res.status(500).json({ error: err.message || 'Failed to generate chart' })
-  }
-}
+  }}

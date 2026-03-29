@@ -255,13 +255,30 @@ export default function GetYourChart() {
             </button>
           </form>
 
+          {/* CTA */}
+          <div className="mt-10 pt-8 border-t border-warmgray-800/50 text-center">
+            <p className="font-serif text-heading-3 text-gold-400 mb-2">
+              Want the full picture?
+            </p>
+            <p className="font-sans text-small text-warmgray-400 leading-relaxed mb-5">
+              This Quick Chart is a snapshot. For a full 20+ page personalised interpretation
+              covering your Seven Pillars, shadow work, compensatory mechanisms, and soul signature:
+            </p>
+            <a
+              href="https://tarotpathwork.com/readings/natal-signature-report"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block font-sans text-small font-medium bg-gold-500/10 text-gold-400 border border-gold-500/30 rounded-lg px-6 py-2.5 hover:bg-gold-500/20 hover:border-gold-500/50 transition-all duration-300 no-underline"
+            >
+              Get Your Full Natal Signature Report
+            </a>
+          </div>
+
           {/* Info note */}
-          <div className="mt-10 pt-8 border-t border-warmgray-800/50">
-            <p className="font-sans text-small text-warmgray-500 leading-relaxed">
-              Your Quick Chart shows the planetary positions at the moment of your birth mapped onto
-              the Tree of Life, along with the seven pathway polarities derived from the Sefer Yetzirah's
-              original planetary attributions. This is a snapshot of your natal architecture, not a
-              full interpretation. No data is stored and no account is required.
+          <div className="mt-8 pt-6 border-t border-warmgray-800/30">
+            <p className="font-sans text-caption text-warmgray-600 leading-relaxed">
+              No data is stored and no account is required. Your chart is generated on the fly
+              and delivered as a PDF.
             </p>
           </div>
         </div>
