@@ -168,13 +168,13 @@ async function calculateChart(year: number, month: number, day: number, hour: nu
 // ─── Double letter path data ─────────────────────────────────────────────────
 
 const DOUBLE_LETTERS = [
-  { letter: 'Beth (ב)', planet: 'Saturn', from: 'Kether', to: 'Binah', positive: 'Life', negative: 'Death' },
-  { letter: 'Gimel (ג)', planet: 'Jupiter', from: 'Kether', to: 'Tiphereth', positive: 'Peace', negative: 'Evil' },
-  { letter: 'Daleth (ד)', planet: 'Mars', from: 'Chokmah', to: 'Binah', positive: 'Wisdom', negative: 'Folly' },
-  { letter: 'Kaph (כ)', planet: 'Sun', from: 'Chesed', to: 'Netzach', positive: 'Wealth', negative: 'Poverty' },
-  { letter: 'Pe (פ)', planet: 'Venus', from: 'Netzach', to: 'Hod', positive: 'Prosperity', negative: 'Desolation' },
-  { letter: 'Resh (ר)', planet: 'Mercury', from: 'Hod', to: 'Yesod', positive: 'Beauty', negative: 'Ugliness' },
-  { letter: 'Tav (ת)', planet: 'Moon', from: 'Yesod', to: 'Malkuth', positive: 'Mastery', negative: 'Slavery' },
+  { letter: 'Beth', abbr: 'B', planet: 'Saturn', from: 'Kether', to: 'Binah', positive: 'Life', negative: 'Death' },
+  { letter: 'Gimel', abbr: 'G', planet: 'Jupiter', from: 'Kether', to: 'Tiphereth', positive: 'Peace', negative: 'Evil' },
+  { letter: 'Daleth', abbr: 'D', planet: 'Mars', from: 'Chokmah', to: 'Binah', positive: 'Wisdom', negative: 'Folly' },
+  { letter: 'Kaph', abbr: 'K', planet: 'Sun', from: 'Chesed', to: 'Netzach', positive: 'Wealth', negative: 'Poverty' },
+  { letter: 'Pe', abbr: 'P', planet: 'Venus', from: 'Netzach', to: 'Hod', positive: 'Prosperity', negative: 'Desolation' },
+  { letter: 'Resh', abbr: 'R', planet: 'Mercury', from: 'Hod', to: 'Yesod', positive: 'Beauty', negative: 'Ugliness' },
+  { letter: 'Tav', abbr: 'T', planet: 'Moon', from: 'Yesod', to: 'Malkuth', positive: 'Mastery', negative: 'Slavery' },
 ]
 
 const PLANETARY_SEPHIROT: Record<string, string> = {
@@ -210,6 +210,56 @@ const WORLD_COLORS: Record<string, string> = {
   Atziluth: '#8b3a4a', Briah: '#3a4a6b', Yetzirah: '#bb9258', Assiah: '#4a5a4a',
 }
 
+// ─── Tree of Life layout (coordinates for PDF drawing) ───────────────────────
+
+const SEPHIROT_POS: Record<string, { x: number; y: number }> = {
+  Kether:    { x: 150, y: 30 },
+  Chokmah:   { x: 250, y: 80 },
+  Binah:     { x: 50,  y: 80 },
+  Chesed:    { x: 250, y: 180 },
+  Geburah:   { x: 50,  y: 180 },
+  Tiphereth: { x: 150, y: 230 },
+  Netzach:   { x: 250, y: 310 },
+  Hod:       { x: 50,  y: 310 },
+  Yesod:     { x: 150, y: 370 },
+  Malkuth:   { x: 150, y: 430 },
+}
+
+// All 22 paths: [from, to, type]
+const ALL_PATHS: [string, string, string][] = [
+  // Mother letters
+  ['Kether', 'Chokmah', 'mother'],
+  ['Geburah', 'Hod', 'mother'],
+  ['Hod', 'Malkuth', 'mother'],
+  // Double letters (highlighted with dignity color)
+  ['Kether', 'Binah', 'double'],
+  ['Kether', 'Tiphereth', 'double'],
+  ['Chokmah', 'Binah', 'double'],
+  ['Chesed', 'Netzach', 'double'],
+  ['Netzach', 'Hod', 'double'],
+  ['Hod', 'Yesod', 'double'],
+  ['Yesod', 'Malkuth', 'double'],
+  // Simple letters
+  ['Chokmah', 'Tiphereth', 'simple'],
+  ['Chokmah', 'Chesed', 'simple'],
+  ['Binah', 'Tiphereth', 'simple'],
+  ['Binah', 'Geburah', 'simple'],
+  ['Chesed', 'Geburah', 'simple'],
+  ['Chesed', 'Tiphereth', 'simple'],
+  ['Geburah', 'Tiphereth', 'simple'],
+  ['Tiphereth', 'Netzach', 'simple'],
+  ['Tiphereth', 'Yesod', 'simple'],
+  ['Tiphereth', 'Hod', 'simple'],
+  ['Netzach', 'Yesod', 'simple'],
+  ['Netzach', 'Malkuth', 'simple'],
+]
+
+function findDoubleLetterForPath(from: string, to: string) {
+  return DOUBLE_LETTERS.find(
+    dl => (dl.from === from && dl.to === to) || (dl.from === to && dl.to === from)
+  ) || null
+}
+
 function generateQuickChartPDF(
   birthInfo: { name: string; date: string; time: string; location: string },
   planets: Record<string, SimplePosition>,
@@ -224,79 +274,228 @@ function generateQuickChartPDF(
     doc.on('error', reject)
 
     const pw = 612 - 72 // page width minus margins
+    const sephR = 16    // sephirah circle radius
+    const pathLabelR = 8 // path label circle radius
 
     // ── Title ──────────────────────────────────────────────────────────
-    doc.moveDown(0.5)
-    doc.fontSize(22).font('Helvetica-Bold').fillColor(GOLD)
+    doc.moveDown(0.3)
+    doc.fontSize(20).font('Helvetica-Bold').fillColor(GOLD)
       .text('Natal Quick Chart', { align: 'center' })
-    doc.moveDown(0.15)
-    doc.fontSize(16).font('Helvetica-Bold').fillColor(INK)
-      .text(birthInfo.name, { align: 'center' })
     doc.moveDown(0.1)
-    doc.fontSize(9).font('Helvetica').fillColor(LIGHT)
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(INK)
+      .text(birthInfo.name, { align: 'center' })
+    doc.moveDown(0.05)
+    doc.fontSize(8.5).font('Helvetica').fillColor(LIGHT)
       .text(`${birthInfo.date}  |  ${birthInfo.time}  |  ${birthInfo.location}`, { align: 'center' })
 
     // Gold rule
-    doc.moveDown(0.5)
+    doc.moveDown(0.4)
     const ruleY = doc.y
     doc.moveTo(36, ruleY).lineTo(576, ruleY).strokeColor(GOLD).lineWidth(1).opacity(0.6).stroke()
     doc.opacity(1)
-    doc.moveDown(0.5)
 
-    // ── Two-column layout ──────────────────────────────────────────────
-    const colLeft = 36
-    const colRight = 310
-    const colWidth = 260
+    // ══════════════════════════════════════════════════════════════════
+    // TWO-COLUMN LAYOUT
+    // Left: Tree of Life graphic (drawn) + planetary positions beneath
+    // Right: Seven Pathways + Four Worlds + Dignity Summary
+    // ══════════════════════════════════════════════════════════════════
 
-    // LEFT COLUMN: Tree of Life Activation + Four Worlds
-    const startY = doc.y
+    const treeOffsetX = 36    // left margin for tree area
+    const treeOffsetY = ruleY + 10
+    const colRight = 320
+    const colRightW = 250
+    const startY = treeOffsetY
 
-    doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD).text('Tree of Life Activation', colLeft, startY, { width: colWidth })
-    doc.moveDown(0.3)
+    // ── LEFT: Draw Tree of Life ────────────────────────────────────────
 
-    const planetList = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+    // Draw all 22 paths
+    for (const [from, to, type] of ALL_PATHS) {
+      const f = SEPHIROT_POS[from]
+      const t = SEPHIROT_POS[to]
+      const fx = treeOffsetX + f.x
+      const fy = treeOffsetY + f.y
+      const tx = treeOffsetX + t.x
+      const ty = treeOffsetY + t.y
+
+      if (type === 'double') {
+        const dl = findDoubleLetterForPath(from, to)
+        if (dl) {
+          const dignity = getDignity(dl.planet, planets[dl.planet].sign)
+          const color = DIGNITY_COLORS[dignity] || '#8a7f6f'
+
+          // Glow underlay
+          doc.save()
+          doc.moveTo(fx, fy).lineTo(tx, ty)
+            .strokeColor(color).lineWidth(7).opacity(0.2).stroke()
+          doc.restore()
+
+          // Main path stroke
+          doc.moveTo(fx, fy).lineTo(tx, ty)
+            .strokeColor(color).lineWidth(3.5).opacity(1).stroke()
+
+          // Letter label circle at midpoint
+          const mx = (fx + tx) / 2
+          const my = (fy + ty) / 2
+          doc.circle(mx, my, pathLabelR).fill(color)
+          doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff')
+            .text(dl.abbr, mx - pathLabelR, my - 3.5, { width: pathLabelR * 2, align: 'center' })
+        }
+      } else {
+        // Mother or simple letter: thin dashed gray
+        doc.save()
+        doc.moveTo(fx, fy).lineTo(tx, ty)
+          .strokeColor('#c0b8a8').lineWidth(0.8).dash(3, { space: 3 }).opacity(0.5).stroke()
+        doc.restore()
+        doc.undash()
+      }
+    }
+
+    // Draw sephiroth circles on top
+    const SEPH_FILL = '#1e1b4b'
+    const SEPH_STROKE_COLOR = '#6366f1'
+    for (const [name, pos] of Object.entries(SEPHIROT_POS)) {
+      const cx = treeOffsetX + pos.x
+      const cy = treeOffsetY + pos.y
+
+      doc.circle(cx, cy, sephR).fillAndStroke(SEPH_FILL, SEPH_STROKE_COLOR)
+      doc.lineWidth(1.5)
+      doc.fontSize(6).font('Helvetica-Bold').fillColor('#ffffff')
+        .text(name, cx - sephR - 2, cy - 3, { width: sephR * 2 + 4, align: 'center' })
+    }
+
+    // Pillar labels under tree
+    const pillarY = treeOffsetY + 450
+    doc.fontSize(7).font('Helvetica').fillColor(LIGHT)
+    doc.text('Severity', treeOffsetX + 50 - 25, pillarY, { width: 50, align: 'center' })
+    doc.text('Balance', treeOffsetX + 150 - 25, pillarY, { width: 50, align: 'center' })
+    doc.text('Mercy', treeOffsetX + 250 - 25, pillarY, { width: 50, align: 'center' })
+
+    // Dignity legend under tree
+    const legendY = pillarY + 14
+    const legendX = treeOffsetX + 15
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(MID)
+      .text('Dignity:', legendX, legendY, { continued: false })
+    const legendItems = [
+      { label: 'Exalted', color: DIGNITY_COLORS.exalted },
+      { label: 'Domicile', color: DIGNITY_COLORS.domicile },
+      { label: 'Peregrine', color: DIGNITY_COLORS.peregrine },
+      { label: 'Detriment', color: DIGNITY_COLORS.detriment },
+      { label: 'Fall', color: DIGNITY_COLORS.fall },
+    ]
+    let lx = legendX + 42
+    for (const item of legendItems) {
+      doc.circle(lx, legendY + 3, 3).fill(item.color)
+      doc.fontSize(6).font('Helvetica').fillColor(MID)
+        .text(item.label, lx + 5, legendY, { continued: false })
+      lx += 45
+    }
+
+    // Planetary positions table under the legend
+    const tableY = legendY + 16
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(GOLD)
+      .text('Planetary Positions', treeOffsetX, tableY, { width: 270 })
+
+    const planetList = ['Saturn', 'Jupiter', 'Mars', 'Sun', 'Venus', 'Mercury', 'Moon', 'Uranus', 'Neptune', 'Pluto']
+    let tblY = tableY + 12
     for (const planet of planetList) {
       const data = planets[planet]
       if (!data) continue
       const seph = PLANETARY_SEPHIROT[planet] || ''
       const dignity = getDignity(planet, data.sign)
       const isClassical = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'].includes(planet)
-      const dignityStr = isClassical ? `  (${dignityLabel(dignity)})` : ''
 
-      doc.fontSize(8).font('Helvetica-Bold').fillColor(INK)
-        .text(`${planet}`, colLeft, doc.y, { continued: true, width: colWidth })
-      doc.font('Helvetica').fillColor(MID)
-        .text(`  ${data.sign} ${data.degree.toFixed(1)}°  →  ${seph}`, { continued: true })
+      doc.fontSize(7).font('Helvetica-Bold').fillColor(INK)
+        .text(planet, treeOffsetX, tblY, { width: 48, continued: false })
+      doc.fontSize(7).font('Helvetica').fillColor(MID)
+        .text(`${data.sign} ${data.degree.toFixed(1)}`, treeOffsetX + 48, tblY, { width: 65, continued: false })
+      doc.fillColor(LIGHT)
+        .text(seph, treeOffsetX + 113, tblY, { width: 55, continued: false })
       if (isClassical) {
-        doc.fillColor(DIGNITY_COLORS[dignity] || LIGHT)
-          .text(dignityStr, { continued: false })
-      } else {
-        doc.text('', { continued: false })
+        doc.fillColor(DIGNITY_COLORS[dignity] || LIGHT).font('Helvetica-Bold')
+          .text(dignityLabel(dignity), treeOffsetX + 168, tblY, { width: 55, continued: false })
       }
-      doc.moveDown(0.05)
+      tblY += 10
     }
 
-    // Four Worlds
-    doc.moveDown(0.5)
-    doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD).text('Four Worlds', colLeft, doc.y, { width: colWidth })
-    doc.moveDown(0.3)
+    // ── RIGHT COLUMN: Seven Pathways ───────────────────────────────────
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(GOLD)
+      .text('The Seven Pathways', colRight, startY, { width: colRightW })
+    let rightY = startY + 16
+
+    for (const dl of DOUBLE_LETTERS) {
+      const data = planets[dl.planet]
+      const dignity = getDignity(dl.planet, data.sign)
+      const lean = getPolarityLean(dignity)
+      const color = DIGNITY_COLORS[dignity] || LIGHT
+
+      let leanTarget: string
+      if (lean.includes('positive')) leanTarget = dl.positive
+      else if (lean.includes('negative')) leanTarget = dl.negative
+      else leanTarget = `${dl.positive} / ${dl.negative}`
+
+      // Path header with colored dot
+      doc.circle(colRight + 4, rightY + 4, 4).fill(color)
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(color)
+        .text(`${dl.letter}`, colRight + 12, rightY, { continued: true, width: colRightW - 12 })
+      doc.fillColor(MID).font('Helvetica')
+        .text(` - ${dl.planet}`, { continued: false })
+      rightY += 11
+
+      // Path + sign info
+      doc.fontSize(7).font('Helvetica').fillColor(LIGHT)
+        .text(`${dl.from} to ${dl.to}  |  ${data.sign} ${data.degree.toFixed(1)}  |  ${dignityLabel(dignity)}`, colRight + 12, rightY, { width: colRightW - 12 })
+      rightY += 9
+
+      // Polarity lean
+      doc.fontSize(7).font('Helvetica').fillColor(INK)
+        .text(`${dl.positive} / ${dl.negative}:`, colRight + 12, rightY, { continued: true, width: colRightW - 12 })
+      doc.font('Helvetica-Bold').fillColor(color)
+        .text(` ${leanLabel(lean)} ${leanTarget}`, { continued: false })
+      rightY += 9
+
+      // Pillar label
+      doc.fontSize(6.5).font('Helvetica').fillColor(LIGHT)
+        .text(PILLAR_LABELS[dl.planet], colRight + 12, rightY, { width: colRightW - 12 })
+      rightY += 12
+
+      // Separator
+      doc.moveTo(colRight + 12, rightY).lineTo(colRight + colRightW - 5, rightY)
+        .strokeColor(GOLD).lineWidth(0.3).opacity(0.3).stroke()
+      doc.opacity(1)
+      rightY += 7
+    }
+
+    // Four Worlds (right column, below pathways)
+    rightY += 3
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(GOLD)
+      .text('Four Worlds', colRight, rightY, { width: colRightW })
+    rightY += 14
 
     const worlds = ['Atziluth', 'Briah', 'Yetzirah', 'Assiah'] as const
     for (const world of worlds) {
       const pct = worldPercentages[world] || 0
       const isDominant = world === dominantWorld
-      const barLen = Math.max(Math.round(pct / 100 * 25), 1)
-      const bar = '\u2588'.repeat(barLen)
-      const suffix = isDominant ? '  PRIMARY' : ''
 
-      doc.fontSize(isDominant ? 9 : 8)
-        .font(isDominant ? 'Helvetica-Bold' : 'Helvetica')
+      // Draw bar
+      const barMaxW = 90
+      const barW = Math.max(pct / 100 * barMaxW, 3)
+      const barX = colRight + 65
+      const barH = 7
+
+      doc.fontSize(7).font(isDominant ? 'Helvetica-Bold' : 'Helvetica')
         .fillColor(WORLD_COLORS[world])
-        .text(`${world.padEnd(12)} ${bar}  ${pct}%${suffix}`, colLeft, doc.y, { width: colWidth })
-      doc.moveDown(0.1)
+        .text(world, colRight, rightY, { width: 62 })
+
+      doc.rect(barX, rightY + 1, barW, barH).fill(WORLD_COLORS[world])
+      doc.fontSize(6.5).font(isDominant ? 'Helvetica-Bold' : 'Helvetica')
+        .fillColor(MID)
+        .text(`${pct}%${isDominant ? '  PRIMARY' : ''}`, barX + barMaxW + 5, rightY, { width: 70 })
+
+      rightY += 12
     }
 
-    // Stelliums
+    // Stelliums + Dignity summary
     const signPlanets: Record<string, string[]> = {}
     for (const [planet, data] of Object.entries(planets)) {
       if (!signPlanets[data.sign]) signPlanets[data.sign] = []
@@ -306,107 +505,51 @@ function generateQuickChartPDF(
       .filter(([_, list]) => list.length >= 3)
       .map(([sign, list]) => ({ sign, planets: list }))
 
-    if (stelliums.length > 0) {
-      doc.moveDown(0.5)
-      doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD).text('Stelliums', colLeft, doc.y, { width: colWidth })
-      doc.moveDown(0.2)
-      for (const s of stelliums) {
-        doc.fontSize(8).font('Helvetica').fillColor(MID)
-          .text(`${s.sign}: ${s.planets.join(', ')}`, colLeft, doc.y, { width: colWidth })
-        doc.moveDown(0.05)
-      }
-    }
-
-    // Dignity summary
     const classicalPlanets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
     const allDignities = classicalPlanets.map(p => getDignity(p, planets[p].sign))
     const dignifiedCount = allDignities.filter(d => d === 'domicile' || d === 'exalted').length
     const debilitatedCount = allDignities.filter(d => d === 'detriment' || d === 'fall').length
     const peregrineCount = allDignities.filter(d => d === 'peregrine').length
 
-    doc.moveDown(0.5)
-    doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD).text('Dignity Summary', colLeft, doc.y, { width: colWidth })
-    doc.moveDown(0.2)
-    doc.fontSize(8).font('Helvetica').fillColor(MID)
-      .text(`Dignified: ${dignifiedCount}  |  Peregrine: ${peregrineCount}  |  Debilitated: ${debilitatedCount}`, colLeft, doc.y, { width: colWidth })
+    rightY += 4
+    doc.fontSize(7).font('Helvetica-Bold').fillColor(MID)
+      .text(`Dignified: ${dignifiedCount}  |  Peregrine: ${peregrineCount}  |  Debilitated: ${debilitatedCount}`, colRight, rightY, { width: colRightW })
 
-    // RIGHT COLUMN: Seven Pathway Breakdowns
-    doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD).text('The Seven Pathways', colRight, startY, { width: colWidth })
-    let rightY = startY + 18
-
-    for (const dl of DOUBLE_LETTERS) {
-      const data = planets[dl.planet]
-      const dignity = getDignity(dl.planet, data.sign)
-      const lean = getPolarityLean(dignity)
-      const color = DIGNITY_COLORS[dignity] || LIGHT
-
-      // Determine which polarity the path leans toward
-      let leanTarget: string
-      if (lean.includes('positive')) {
-        leanTarget = dl.positive
-      } else if (lean.includes('negative')) {
-        leanTarget = dl.negative
-      } else {
-        leanTarget = `${dl.positive} / ${dl.negative}`
-      }
-
-      // Path header
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(color)
-        .text(`${dl.letter}  —  ${dl.planet}`, colRight, rightY, { width: colWidth })
+    if (stelliums.length > 0) {
       rightY += 12
-
-      // Path details
-      doc.fontSize(7.5).font('Helvetica').fillColor(MID)
-        .text(`${dl.from} ↔ ${dl.to}  |  ${data.sign} ${data.degree.toFixed(1)}°  |  ${dignityLabel(dignity)}`, colRight, rightY, { width: colWidth })
-      rightY += 10
-
-      // Polarity
-      doc.fontSize(7.5).font('Helvetica').fillColor(INK)
-        .text(`Polarity: ${dl.positive} / ${dl.negative}`, colRight, rightY, { continued: true, width: colWidth })
-      doc.font('Helvetica-Bold').fillColor(color)
-        .text(`  →  ${leanLabel(lean)} ${leanTarget}`)
-      rightY += 11
-
-      // Pillar label
-      const pillarLabel = PILLAR_LABELS[dl.planet]
-      doc.fontSize(7).font('Helvetica').fillColor(LIGHT)
-        .text(`Pillar: ${pillarLabel}`, colRight, rightY, { width: colWidth })
-      rightY += 14
-
-      // Separator line
-      doc.moveTo(colRight, rightY).lineTo(colRight + colWidth - 10, rightY)
-        .strokeColor(GOLD).lineWidth(0.3).opacity(0.4).stroke()
-      doc.opacity(1)
-      rightY += 8
+      doc.fontSize(7).font('Helvetica-Bold').fillColor(GOLD)
+        .text('Stelliums:', colRight, rightY, { continued: true, width: colRightW })
+      doc.font('Helvetica').fillColor(MID)
+        .text('  ' + stelliums.map(s => `${s.sign} (${s.planets.join(', ')})`).join('; '), { continued: false })
     }
 
-    // ── Interpretation Guide (bottom section, full width) ────────────
-    const bottomY = Math.max(doc.y + 10, rightY + 5)
-    doc.moveTo(36, bottomY).lineTo(576, bottomY).strokeColor(GOLD).lineWidth(1).opacity(0.6).stroke()
+    // ── Bottom: Reading guide (full width) ────────────────────────────
+    const bottomY = Math.max(tblY + 8, rightY + 14)
+    doc.moveTo(36, bottomY).lineTo(576, bottomY).strokeColor(GOLD).lineWidth(0.8).opacity(0.5).stroke()
     doc.opacity(1)
 
-    doc.fontSize(9).font('Helvetica-Bold').fillColor(GOLD)
-      .text('Reading Your Chart', 36, bottomY + 8, { width: pw })
-    doc.moveDown(0.2)
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(GOLD)
+      .text('Reading Your Chart', 36, bottomY + 6, { width: pw })
+    doc.moveDown(0.15)
 
-    doc.fontSize(7).font('Helvetica').fillColor(MID)
+    doc.fontSize(6.5).font('Helvetica').fillColor(MID)
       .text(
         'Start from the foundation (bottom of the Tree) and read upward. ' +
         'Moon (Tav), Mercury (Resh), and Venus (Pe) form your emotional and relational base. ' +
-        'Sun (Kaph) at the center represents your core identity. ' +
+        'Sun (Kaph) at the centre represents your core identity. ' +
         'Mars (Daleth), Jupiter (Gimel), and Saturn (Beth) shape your higher structures. ' +
         'Dignified planets lean toward the aligned polarity. Debilitated planets lean toward the shadow expression. ' +
-        'Peregrine planets are balanced, with neither polarity dominating by default.',
-        36, doc.y, { width: pw, lineGap: 2 }
+        'Peregrine planets sit balanced, with neither polarity dominating by default.',
+        36, doc.y, { width: pw, lineGap: 1.5 }
       )
 
-    // Footer
-    doc.moveDown(0.3)
+    // Footer line
+    doc.moveDown(0.25)
     doc.moveTo(36, doc.y).lineTo(576, doc.y).strokeColor(GOLD).lineWidth(0.3).opacity(0.3).stroke()
     doc.opacity(1)
-    doc.moveDown(0.2)
-    doc.fontSize(7).font('Helvetica').fillColor(LIGHT)
-      .text('LucianKabbalah.com  |  Sefer Yetzirah planetary attributions (Hayman critical edition)', 36, doc.y, { width: pw / 2, align: 'left' })
+    doc.moveDown(0.15)
+    doc.fontSize(6.5).font('Helvetica').fillColor(LIGHT)
+      .text('LucianKabbalah.com  |  Sefer Yetzirah planetary attributions (Hayman critical edition)', 36, doc.y, { width: pw, align: 'left' })
 
     doc.end()
   })
