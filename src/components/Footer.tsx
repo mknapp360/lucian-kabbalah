@@ -23,6 +23,7 @@ export default function Footer() {
                 { to: '/correction', label: 'The Correction' },
                 { to: '/sources', label: 'Sources' },
                 { to: '/canon', label: 'The Canon' },
+                { to: '/get-your-chart', label: 'Get Your Chart' },
               ].map(({ to, label }) => (
                 <Link
                   key={to}

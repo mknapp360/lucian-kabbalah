@@ -7,6 +7,7 @@ const nav = [
   { path: '/correction', label: 'The Correction' },
   { path: '/sources', label: 'Sources' },
   { path: '/canon', label: 'The Canon' },
+  { path: '/get-your-chart', label: 'Get Your Chart' },
 ]
 
 export default function Header() {

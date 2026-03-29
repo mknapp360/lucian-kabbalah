@@ -8,6 +8,7 @@ import ThreeStreams from './pages/ThreeStreams'
 import Correction from './pages/Correction'
 import Sources from './pages/Sources'
 import Canon from './pages/Canon'
+import GetYourChart from './pages/GetYourChart'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/correction" element={<Correction />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/canon" element={<Canon />} />
+          <Route path="/get-your-chart" element={<GetYourChart />} />
         </Routes>
       </main>
       <Footer />
