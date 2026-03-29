@@ -280,7 +280,7 @@ function generateQuickChartPDF(
     // ── Title ──────────────────────────────────────────────────────────
     doc.moveDown(0.3)
     doc.fontSize(20).font('Helvetica-Bold').fillColor(GOLD)
-      .text('Natal Quick Chart', { align: 'center' })
+      .text('Kabbalah Natal Chart', { align: 'center' })
     doc.moveDown(0.1)
     doc.fontSize(14).font('Helvetica-Bold').fillColor(INK)
       .text(birthInfo.name, { align: 'center' })
@@ -370,53 +370,6 @@ function generateQuickChartPDF(
     doc.text('Balance', treeOffsetX + 150 - 25, pillarY, { width: 50, align: 'center' })
     doc.text('Mercy', treeOffsetX + 250 - 25, pillarY, { width: 50, align: 'center' })
 
-    // Dignity legend under tree
-    const legendY = pillarY + 14
-    const legendX = treeOffsetX + 15
-    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(MID)
-      .text('Dignity:', legendX, legendY, { continued: false })
-    const legendItems = [
-      { label: 'Exalted', color: DIGNITY_COLORS.exalted },
-      { label: 'Domicile', color: DIGNITY_COLORS.domicile },
-      { label: 'Peregrine', color: DIGNITY_COLORS.peregrine },
-      { label: 'Detriment', color: DIGNITY_COLORS.detriment },
-      { label: 'Fall', color: DIGNITY_COLORS.fall },
-    ]
-    let lx = legendX + 42
-    for (const item of legendItems) {
-      doc.circle(lx, legendY + 3, 3).fill(item.color)
-      doc.fontSize(6).font('Helvetica').fillColor(MID)
-        .text(item.label, lx + 5, legendY, { continued: false })
-      lx += 45
-    }
-
-    // Planetary positions table under the legend
-    const tableY = legendY + 16
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(GOLD)
-      .text('Planetary Positions', treeOffsetX, tableY, { width: 270 })
-
-    const planetList = ['Saturn', 'Jupiter', 'Mars', 'Sun', 'Venus', 'Mercury', 'Moon', 'Uranus', 'Neptune', 'Pluto']
-    let tblY = tableY + 12
-    for (const planet of planetList) {
-      const data = planets[planet]
-      if (!data) continue
-      const seph = PLANETARY_SEPHIROT[planet] || ''
-      const dignity = getDignity(planet, data.sign)
-      const isClassical = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'].includes(planet)
-
-      doc.fontSize(7).font('Helvetica-Bold').fillColor(INK)
-        .text(planet, treeOffsetX, tblY, { width: 48, continued: false })
-      doc.fontSize(7).font('Helvetica').fillColor(MID)
-        .text(`${data.sign} ${data.degree.toFixed(1)}`, treeOffsetX + 48, tblY, { width: 65, continued: false })
-      doc.fillColor(LIGHT)
-        .text(seph, treeOffsetX + 113, tblY, { width: 55, continued: false })
-      if (isClassical) {
-        doc.fillColor(DIGNITY_COLORS[dignity] || LIGHT).font('Helvetica-Bold')
-          .text(dignityLabel(dignity), treeOffsetX + 168, tblY, { width: 55, continued: false })
-      }
-      tblY += 10
-    }
-
     // ── RIGHT COLUMN: Seven Pathways ───────────────────────────────────
 
     doc.fontSize(10).font('Helvetica-Bold').fillColor(GOLD)
@@ -466,36 +419,34 @@ function generateQuickChartPDF(
       rightY += 7
     }
 
-    // Four Worlds (right column, below pathways)
-    rightY += 3
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(GOLD)
-      .text('Four Worlds', colRight, rightY, { width: colRightW })
-    rightY += 14
-
-    const worlds = ['Atziluth', 'Briah', 'Yetzirah', 'Assiah'] as const
-    for (const world of worlds) {
-      const pct = worldPercentages[world] || 0
-      const isDominant = world === dominantWorld
-
-      // Draw bar
-      const barMaxW = 90
-      const barW = Math.max(pct / 100 * barMaxW, 3)
-      const barX = colRight + 65
-      const barH = 7
-
-      doc.fontSize(7).font(isDominant ? 'Helvetica-Bold' : 'Helvetica')
-        .fillColor(WORLD_COLORS[world])
-        .text(world, colRight, rightY, { width: 62 })
-
-      doc.rect(barX, rightY + 1, barW, barH).fill(WORLD_COLORS[world])
-      doc.fontSize(6.5).font(isDominant ? 'Helvetica-Bold' : 'Helvetica')
-        .fillColor(MID)
-        .text(`${pct}%${isDominant ? '  PRIMARY' : ''}`, barX + barMaxW + 5, rightY, { width: 70 })
-
-      rightY += 12
+    // Dignity legend + counts (right column, below pathways)
+    rightY += 4
+    const legendItems = [
+      { label: 'Exalted', color: DIGNITY_COLORS.exalted },
+      { label: 'Domicile', color: DIGNITY_COLORS.domicile },
+      { label: 'Peregrine', color: DIGNITY_COLORS.peregrine },
+      { label: 'Detriment', color: DIGNITY_COLORS.detriment },
+      { label: 'Fall', color: DIGNITY_COLORS.fall },
+    ]
+    let lx = colRight
+    for (const item of legendItems) {
+      doc.circle(lx + 4, rightY + 3, 3).fill(item.color)
+      doc.fontSize(6).font('Helvetica').fillColor(MID)
+        .text(item.label, lx + 9, rightY, { continued: false })
+      lx += 47
     }
+    rightY += 13
 
-    // Stelliums + Dignity summary
+    const classicalPlanets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
+    const allDignities = classicalPlanets.map(p => getDignity(p, planets[p].sign))
+    const dignifiedCount = allDignities.filter(d => d === 'domicile' || d === 'exalted').length
+    const debilitatedCount = allDignities.filter(d => d === 'detriment' || d === 'fall').length
+    const peregrineCount = allDignities.filter(d => d === 'peregrine').length
+
+    doc.fontSize(7).font('Helvetica-Bold').fillColor(MID)
+      .text(`Dignified: ${dignifiedCount}  |  Peregrine: ${peregrineCount}  |  Debilitated: ${debilitatedCount}`, colRight, rightY, { width: colRightW })
+
+    // Stelliums (if any)
     const signPlanets: Record<string, string[]> = {}
     for (const [planet, data] of Object.entries(planets)) {
       if (!signPlanets[data.sign]) signPlanets[data.sign] = []
@@ -505,16 +456,6 @@ function generateQuickChartPDF(
       .filter(([_, list]) => list.length >= 3)
       .map(([sign, list]) => ({ sign, planets: list }))
 
-    const classicalPlanets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
-    const allDignities = classicalPlanets.map(p => getDignity(p, planets[p].sign))
-    const dignifiedCount = allDignities.filter(d => d === 'domicile' || d === 'exalted').length
-    const debilitatedCount = allDignities.filter(d => d === 'detriment' || d === 'fall').length
-    const peregrineCount = allDignities.filter(d => d === 'peregrine').length
-
-    rightY += 4
-    doc.fontSize(7).font('Helvetica-Bold').fillColor(MID)
-      .text(`Dignified: ${dignifiedCount}  |  Peregrine: ${peregrineCount}  |  Debilitated: ${debilitatedCount}`, colRight, rightY, { width: colRightW })
-
     if (stelliums.length > 0) {
       rightY += 12
       doc.fontSize(7).font('Helvetica-Bold').fillColor(GOLD)
@@ -523,31 +464,48 @@ function generateQuickChartPDF(
         .text('  ' + stelliums.map(s => `${s.sign} (${s.planets.join(', ')})`).join('; '), { continued: false })
     }
 
-    // ── Bottom: Reading guide (full width) ────────────────────────────
-    const bottomY = Math.max(tblY + 8, rightY + 14)
+    // ── Bottom: Reading Your Chart (full width) ──────────────────────
+    const leftBottomY = pillarY + 12
+    const bottomY = Math.max(leftBottomY, rightY + 16)
     doc.moveTo(36, bottomY).lineTo(576, bottomY).strokeColor(GOLD).lineWidth(0.8).opacity(0.5).stroke()
     doc.opacity(1)
 
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(GOLD)
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(GOLD)
       .text('Reading Your Chart', 36, bottomY + 6, { width: pw })
     doc.moveDown(0.15)
 
     doc.fontSize(6.5).font('Helvetica').fillColor(MID)
       .text(
-        'Start from the foundation (bottom of the Tree) and read upward. ' +
-        'Moon (Tav), Mercury (Resh), and Venus (Pe) form your emotional and relational base. ' +
-        'Sun (Kaph) at the centre represents your core identity. ' +
-        'Mars (Daleth), Jupiter (Gimel), and Saturn (Beth) shape your higher structures. ' +
-        'Dignified planets lean toward the aligned polarity. Debilitated planets lean toward the shadow expression. ' +
-        'Peregrine planets sit balanced, with neither polarity dominating by default.',
+        'Read from the bottom of the Tree upward. The foundation paths shape daily life; the upper paths shape deeper structures. ' +
+        'Dignified planets lean toward the aligned polarity. Debilitated planets lean toward the shadow. Peregrine planets sit balanced.',
         36, doc.y, { width: pw, lineGap: 1.5 }
       )
+    doc.moveDown(0.3)
+
+    // Pathway descriptions
+    const pathwayGuide = [
+      { letter: 'Tav', planet: 'Moon', desc: 'Your emotional instincts and whether they lead to inner sovereignty or compulsive reactivity.' },
+      { letter: 'Resh', planet: 'Mercury', desc: 'How you communicate and perceive, producing either coherence and elegance or confusion and distortion.' },
+      { letter: 'Pe', planet: 'Venus', desc: 'What you desire and attract, and whether that love enriches your world or strips it bare.' },
+      { letter: 'Kaph', planet: 'Sun', desc: 'Your core identity and self-expression, generating either abundance and recognition or chronic depletion.' },
+      { letter: 'Daleth', planet: 'Mars', desc: 'How you assert boundaries and take action, guided by either wise discernment or destructive impulse.' },
+      { letter: 'Gimel', planet: 'Jupiter', desc: 'Your capacity for generous expansion, creating either harmony and trust or good intentions that produce harm.' },
+      { letter: 'Beth', planet: 'Saturn', desc: 'The structures and legacies you build, determining whether they endure or collapse under their own weight.' },
+    ]
+
+    for (const pg of pathwayGuide) {
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor(GOLD)
+        .text(`${pg.letter} (${pg.planet}): `, 36, doc.y, { continued: true, width: pw })
+      doc.font('Helvetica').fillColor(MID)
+        .text(pg.desc, { continued: false })
+      doc.moveDown(0.08)
+    }
 
     // Footer line
-    doc.moveDown(0.25)
+    doc.moveDown(0.2)
     doc.moveTo(36, doc.y).lineTo(576, doc.y).strokeColor(GOLD).lineWidth(0.3).opacity(0.3).stroke()
     doc.opacity(1)
-    doc.moveDown(0.15)
+    doc.moveDown(0.1)
     doc.fontSize(6.5).font('Helvetica').fillColor(LIGHT)
       .text('LucianKabbalah.com  |  Sefer Yetzirah planetary attributions (Hayman critical edition)', 36, doc.y, { width: pw, align: 'left' })
 
